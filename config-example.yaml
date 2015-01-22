@@ -1,0 +1,11 @@
+mytardis:
+    base: http://foo.bar
+    username: username
+    password: password
+
+hcp:
+    host: hcp.acme.com
+    base: some/path/prefix/
+    access: access key
+    secret: secret key
+    bucket: some-bucket-name
