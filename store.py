@@ -16,11 +16,11 @@ parser.add_argument("-d", "--description", help = "Description", required = True
 parser.add_argument("-i", "--institution", help = "Institution", required = True)
 
 def md5(filename):
-    md5 = hashlib.md5()
+    md5hash = hashlib.md5()
     with open(filename, "rb") as stream:
         for chunk in iter(lambda: stream.read(64 * 1024), b''):
-            md5.update(chunk)
-    return md5.hexdigest()
+            md5hash.update(chunk)
+    return md5hash.hexdigest()
 
 class MyTardis:
     headers = { "accept": "application/json", "content-type": "application/json" }
@@ -60,15 +60,15 @@ class MyTardis:
 
         return self.location(self.create("dataset", metadata))
 
-    def create_file(self, dataset, name, size, md5, mime_type):
+    def create_file(self, dataset, name, size, md5_hex, mime_type):
         metadata = {
             "dataset": dataset,
             "filename": name,
-            "md5sum": md5,
+            "md5sum": md5_hex,
             "size": size,
             "mimetype": mime_type,
             "replicas": [{
-                "url": md5,
+                "url": md5_hex,
                 "location": "default",
                 "protocol": "file"
             }]
@@ -93,16 +93,16 @@ class HCP:
         key = self.bucket.new_key(self.base + md5(filename))
         key.set_contents_from_filename(filename)
 
-def sync_data(dir, hcp):
+def sync_data(directory, hcp):
     objects = {}
-    for subdir in glob.iglob("%s/*" % dir):
+    for subdir in glob.iglob("%s/*" % directory):
         if os.path.isdir(subdir):
-            for file in glob.iglob("%s/*" % subdir):
-                if os.path.isfile(file):
-                    obj = md5(file)
-                    objects[file] = obj
+            for datafile in glob.iglob("%s/*" % subdir):
+                if os.path.isfile(datafile):
+                    obj = md5(datafile)
+                    objects[datafile] = obj
                     if not hcp.exists(obj):
-                        hcp.upload(file)
+                        hcp.upload(datafile)
     return objects
 
 def upload_metadata(args, objects, mytardis):
@@ -113,9 +113,9 @@ def upload_metadata(args, objects, mytardis):
             dataset_name = subdir.split("/")[-1]
             dataset = mytardis.create_dataset(experiment, dataset_name)
             print dataset
-            for file in glob.iglob("%s/*" % subdir):
-                if os.path.isfile(file):
-                    print mytardis.create_file(dataset, file.split("/")[-1], os.stat(file).st_size, objects[file], "application/octet-stream")
+            for datafile in glob.iglob("%s/*" % subdir):
+                if os.path.isfile(datafile):
+                    print mytardis.create_file(dataset, datafile.split("/")[-1], os.stat(datafile).st_size, objects[datafile], "application/octet-stream")
 
 def process_dir(args, mytardis, hcp):
     objects = sync_data(args.dir, hcp)
