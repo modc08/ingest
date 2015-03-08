@@ -176,6 +176,9 @@ def load_cells(sheet):
     while len(str.join("", [str(cell.value) for cell in sheet.row(first_row)])) == 0:
         first_row += 1
 
+    if first_row + 1 == sheet.nrows:
+        return None
+
     # skip hidden columns
     first_col = 0
     while len(str.join("", [str(cell.value) for cell in sheet.col(first_col)])) == 0:
@@ -183,9 +186,9 @@ def load_cells(sheet):
 
     data = []
     fields = [field.value for field in sheet.row(first_row)]
-    for row in range(first_row+1, sheet.nrows-first_row+1):
+    for row in range(first_row+1, sheet.nrows-first_row):
         item = {}
-        for col in range(first_col, sheet.ncols-first_col+1):
+        for col in range(first_col, sheet.ncols-first_col):
             cell_type = sheet.cell_type(row, col)
             if cell_type == xlrd.XL_CELL_DATE:
                 date_tuple = xlrd.xldate_as_tuple(sheet.cell_value(row, col), sheet.book.datemode)
@@ -202,6 +205,12 @@ def process_metadata(sheets, mytardis, dataset, force=False):
     for sheet_name in valid_sheets:
         if sheet_name in sheets:
             sheet_data = load_cells(sheets[sheet_name])
+
+            if sheet_data:
+                print "Processing sheet: %s" % sheet_name
+            else:
+                print "Skipping sheet: %s" % sheet_name
+                continue
 
             for item in sheet_data:
                 if "id" not in item:
@@ -248,8 +257,10 @@ def main():
 
     try:
         process_dir(args, mytardis, hcp)
-    except Exception, exception:
-        print "Something broke! [ %s ]" % str(exception)
+    except Exception as exception:
+        print "\nSomething broke!\n"
+        raise exception
+
 
 if __name__ == "__main__":
     main()
