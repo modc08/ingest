@@ -17,7 +17,6 @@ parser = argparse.ArgumentParser(
 parser.add_argument("-D", "--dir", help="Directory", required=True)
 parser.add_argument("-t", "--title", help="Title", required=True)
 parser.add_argument("-d", "--description", help="Description", required=True)
-parser.add_argument("-i", "--institution", help="Institution", required=True)
 parser.add_argument("-f", "--force", help="Force overwrite of existing metadata", action="store_true")
 
 # Note: sheet processing order matters!
@@ -26,9 +25,10 @@ valid_sheets = ["organism", "analysis", "source", "sample", "extract", "library"
 class MyTardis(object):
     headers = {"accept": "application/json", "content-type": "application/json"}
 
-    def __init__(self, base, username, password):
-        self.base = base
-        self.auth = (username, password)
+    def __init__(self, config):
+        self.base = config["base"]
+        self.auth = (config["username"], config["password"])
+        self.institution = config["institution"]
 
     def url(self, obj, key=None):
         url_str = "%s/api/v1/%s/" % (self.base, obj)
@@ -43,7 +43,9 @@ class MyTardis(object):
 
     def create(self, obj, data):
         response = requests.post(self.url(obj), headers=self.headers, auth=self.auth, data=json.dumps(data))
-        if response.status_code != 201:
+        if response.status_code == 201:
+            return response
+        else:
             raise Exception("HTTP error: %i\n\n%s" % (response.status_code, response.text))
 
     def fetch(self, obj, key):
@@ -70,10 +72,10 @@ class MyTardis(object):
         else:
             raise Exception("HTTP error: %i\n\n%s" % (response.status_code, response.text))
 
-    def create_experiment(self, title, description, institution):
+    def create_experiment(self, title, description):
         metadata = {
             "description": description,
-            "institution_name": institution,
+            "institution_name": self.institution,
             "title": title
         }
 
@@ -106,14 +108,14 @@ class MyTardis(object):
 
 
 class HCP(object):
-    def __init__(self, host, base, access, secret, bucket):
-        self.base = base
+    def __init__(self, config):
+        self.base = config["base"]
 
-        access = base64.b64encode(access)
-        secret = hashlib.md5(secret).hexdigest()
+        access = base64.b64encode(config["access"])
+        secret = hashlib.md5(config["secret"]).hexdigest()
 
-        hs3 = S3Connection(aws_access_key_id=access, aws_secret_access_key=secret, host=host)
-        self.bucket = hs3.get_bucket(bucket)
+        hs3 = S3Connection(aws_access_key_id=access, aws_secret_access_key=secret, host=config["host"])
+        self.bucket = hs3.get_bucket(config["bucket"])
 
     def exists(self, obj):
         return self.bucket.get_key(self.base + obj) is not None
@@ -147,7 +149,7 @@ def sync_data(directory, hcp):
 
 
 def upload_metadata(args, objects, mytardis):
-    experiment = mytardis.create_experiment(args.title, args.description, args.institution)
+    experiment = mytardis.create_experiment(args.title, args.description)
     print "New experiment:", args.title
     for subdir in glob.iglob("%s/*" % args.dir):
         if os.path.isdir(subdir):
@@ -258,14 +260,10 @@ def main():
 
     config = yaml.load(open("config.yaml", "r"))
 
-    mytardis = MyTardis(config["mytardis"]["base"], config["mytardis"]["username"], config["mytardis"]["password"])
-    hcp = HCP(config["hcp"]["host"], config["hcp"]["base"], config["hcp"]["access"], config["hcp"]["secret"], config["hcp"]["bucket"])
+    mytardis = MyTardis(config["mytardis"])
+    hcp = HCP(config["hcp"])
 
-    try:
-        process_dir(args, mytardis, hcp)
-    except Exception as exception:
-        print "\nSomething broke!\n"
-        raise exception
+    process_dir(args, mytardis, hcp)
 
 
 if __name__ == "__main__":

@@ -2,6 +2,7 @@ mytardis:
     base: http://foo.bar
     username: username
     password: password
+    institution: acme university
 
 hcp:
     host: hcp.acme.com
