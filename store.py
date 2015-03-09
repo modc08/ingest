@@ -42,14 +42,16 @@ class MyTardis(object):
         return "/api/v1/%s/%s/" % (obj, key)
 
     def create(self, obj, data):
-        return requests.post(self.url(obj), headers=self.headers, auth=self.auth, data=json.dumps(data))
+        response = requests.post(self.url(obj), headers=self.headers, auth=self.auth, data=json.dumps(data))
+        if response.status_code != 201:
+            raise Exception("HTTP error: %i\n\n%s" % (response.status_code, response.text))
 
     def fetch(self, obj, key):
         response = requests.get(self.url(obj, key), headers=self.headers, auth=self.auth)
         if response.status_code == 200:
             return response.json()
         else:
-            raise Exception("HTTP error: %i" % response.status_code)
+            raise Exception("HTTP error: %i\n\n%s" % (response.status_code, response.text))
 
     def exists(self, obj, key):
         response = requests.get(self.url(obj, key), headers=self.headers, auth=self.auth)
@@ -58,7 +60,7 @@ class MyTardis(object):
         elif response.status_code == 404:
             return False
         else:
-            raise Exception("HTTP error: %i" % response.status_code)
+            raise Exception("HTTP error: %i\n\n%s" % (response.status_code, response.text))
 
     @staticmethod
     def location(response):
@@ -66,7 +68,7 @@ class MyTardis(object):
             location_header = response.headers["location"]
             return location_header[location_header.index("/api"):]
         else:
-            raise Exception("HTTP error: %i" % response.status_code)
+            raise Exception("HTTP error: %i\n\n%s" % (response.status_code, response.text))
 
     def create_experiment(self, title, description, institution):
         metadata = {
@@ -232,10 +234,7 @@ def process_metadata(sheets, mytardis, dataset, force=False):
 
                 if force or not mytardis.exists(sheet_name, item["id"]):
                     print "Uploading metadata: %s/%s" % (sheet_name, item["id"])
-                    item = strip_empty_values(item)
-                    create_response = mytardis.create(sheet_name, item)
-                    if create_response.status_code != 201:
-                        raise Exception("Error uploading %s:\n\n%s" % (item["id"], create_response.text))
+                    mytardis.create(sheet_name, strip_empty_values(item))
                 else:
                     print "Skipping existing metadata: %s/%s" % (sheet_name, item["id"])
 
