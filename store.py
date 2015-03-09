@@ -206,10 +206,7 @@ def process_metadata(sheets, mytardis, dataset, force=False):
         if sheet_name in sheets:
             sheet_data = load_cells(sheets[sheet_name])
 
-            if sheet_data:
-                print "Processing sheet: %s" % sheet_name
-            else:
-                print "Skipping sheet: %s" % sheet_name
+            if not sheet_data:
                 continue
 
             for item in sheet_data:
@@ -235,10 +232,20 @@ def process_metadata(sheets, mytardis, dataset, force=False):
 
                 if force or not mytardis.exists(sheet_name, item["id"]):
                     print "Uploading metadata: %s/%s" % (sheet_name, item["id"])
-                    mytardis.create(sheet_name, item)
+                    item = strip_empty_values(item)
+                    create_response = mytardis.create(sheet_name, item)
+                    if create_response.status_code != 201:
+                        raise Exception("Error uploading %s:\n\n%s" % (item["id"], create_response.text))
                 else:
                     print "Skipping existing metadata: %s/%s" % (sheet_name, item["id"])
 
+
+def strip_empty_values(data):
+    stripped = {}
+    for key in data:
+        if data[key] != "":
+            stripped[key] = data[key]
+    return stripped
 
 def process_dir(args, mytardis, hcp):
     objects = sync_data(args.dir, hcp)
