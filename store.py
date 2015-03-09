@@ -254,8 +254,6 @@ def process_dir(args, mytardis, hcp):
 
 
 def main():
-    # pylint: disable=broad-except
-
     args = parser.parse_args()
 
     config = yaml.load(open("config.yaml", "r"))
