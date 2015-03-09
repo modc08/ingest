@@ -16,6 +16,7 @@ parser = argparse.ArgumentParser(
     epilog="Remember to populate config.yaml with appropriate settings.")
 parser.add_argument("-D", "--dir", help="Directory", required=True)
 parser.add_argument("-t", "--title", help="Title", required=True)
+parser.add_argument("-a", "--authors", help="Authors (semi-colon separated, format \"Last, First\")", required=True)
 parser.add_argument("-d", "--description", help="Description", required=True)
 parser.add_argument("-f", "--force", help="Force overwrite of existing metadata", action="store_true")
 parser.add_argument("-r", "--remove", help="Remove experiment directory after successful upload", action="store_true")
@@ -107,6 +108,15 @@ class MyTardis(object):
 
         return self.location(self.create("dataset_file", metadata))
 
+    def create_author(self, experiment, author, order):
+        metadata = {
+            "author": author,
+            "experiment": experiment,
+            "order" : order
+        }
+
+        return self.location(self.create("authorexperiment", metadata))
+
 
 class HCP(object):
     def __init__(self, config):
@@ -173,6 +183,7 @@ def upload_metadata(args, objects, mytardis):
                         dataset, datafilename, os.stat(datafile).st_size,
                         objects[datafile], "application/octet-stream")
                     print "New datafile:", datafilename
+    return experiment
 
 
 def load_cells(sheet):
@@ -252,7 +263,15 @@ def strip_empty_values(data):
 
 def process_dir(args, mytardis, hcp):
     objects = sync_data(args.dir, hcp)
-    upload_metadata(args, objects, mytardis)
+    return upload_metadata(args, objects, mytardis)
+
+
+def upload_authors(mytardis, experiment, authors):
+    order = 0
+    for author in [author.strip() for author in authors.split(";")]:
+        print "Registering author: %s" % author
+        mytardis.create_author(experiment, author, order)
+        order += 1
 
 
 def main():
@@ -269,11 +288,15 @@ def main():
     mytardis = MyTardis(config["mytardis"])
     hcp = HCP(config["hcp"])
 
-    process_dir(args, mytardis, hcp)
+    experiment = process_dir(args, mytardis, hcp)
+
+    upload_authors(mytardis, experiment, args.authors)
 
     if args.remove:
         print "Removing:", args.dir
         shutil.rmtree(args.dir)
+
+    print "Done!"
 
 
 if __name__ == "__main__":
