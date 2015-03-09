@@ -4,7 +4,7 @@
 
 """A basic tool for interacting with MyTardis + Hitachi Content Platform (which pretends to be S3)."""
 
-import argparse, base64, glob, hashlib, json, os
+import argparse, base64, glob, hashlib, json, os, shutil, sys
 import requests, xlrd, yaml
 
 from xlrd import open_workbook
@@ -18,6 +18,7 @@ parser.add_argument("-D", "--dir", help="Directory", required=True)
 parser.add_argument("-t", "--title", help="Title", required=True)
 parser.add_argument("-d", "--description", help="Description", required=True)
 parser.add_argument("-f", "--force", help="Force overwrite of existing metadata", action="store_true")
+parser.add_argument("-r", "--remove", help="Remove experiment directory after successful upload", action="store_true")
 
 # Note: sheet processing order matters!
 valid_sheets = ["organism", "analysis", "source", "sample", "extract", "library", "sequence", "processing"]
@@ -248,6 +249,7 @@ def strip_empty_values(data):
             stripped[key] = data[key]
     return stripped
 
+
 def process_dir(args, mytardis, hcp):
     objects = sync_data(args.dir, hcp)
     upload_metadata(args, objects, mytardis)
@@ -256,12 +258,22 @@ def process_dir(args, mytardis, hcp):
 def main():
     args = parser.parse_args()
 
+    args.dir = args.dir.strip()
+
+    if args.dir in ["/", ".", ""]:
+        print "Error: please use the name of the experiment directory rather than \"%s\"." % args.dir
+        sys.exit(1)
+
     config = yaml.load(open("config.yaml", "r"))
 
     mytardis = MyTardis(config["mytardis"])
     hcp = HCP(config["hcp"])
 
     process_dir(args, mytardis, hcp)
+
+    if args.remove:
+        print "Removing:", args.dir
+        shutil.rmtree(args.dir)
 
 
 if __name__ == "__main__":
