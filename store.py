@@ -211,7 +211,11 @@ def load_cells(sheet):
                 date_tuple = xlrd.xldate_as_tuple(sheet.cell_value(row, col), sheet.book.datemode)
                 item[fields[col]] = "%04i-%02i-%02i" % (date_tuple[0], date_tuple[1], date_tuple[2])
             elif cell_type == xlrd.XL_CELL_NUMBER:
-                item[fields[col]] = int(sheet.cell_value(row, col))
+                val = float(sheet.cell_value(row, col))
+                if val.is_integer():
+                    item[fields[col]] = int(val)
+                else:
+                    item[fields[col]] = val
             else:
                 item[fields[col]] = sheet.cell_value(row, col)
         data.append(item)
