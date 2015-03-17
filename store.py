@@ -87,6 +87,7 @@ class MyTardis(object):
         metadata = {
             "description": description,
             "experiments": [experiment],
+            "experiment": experiment,
             "immutable": False
         }
 
