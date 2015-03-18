@@ -18,6 +18,7 @@ parser.add_argument("-D", "--dir", help="Directory", required=True)
 parser.add_argument("-t", "--title", help="Title", required=True)
 parser.add_argument("-a", "--authors", help="Authors (semi-colon separated, format \"Last, First\")", required=True)
 parser.add_argument("-d", "--description", help="Description", required=True)
+parser.add_argument("-i", "--institution", help = "Institution/s (optional; can be semi-colon separated)")
 parser.add_argument("-f", "--force", help="Force overwrite of existing metadata", action="store_true")
 parser.add_argument("-r", "--remove", help="Remove experiment directory after successful upload", action="store_true")
 
@@ -30,7 +31,6 @@ class MyTardis(object):
     def __init__(self, config):
         self.base = config["base"]
         self.auth = (config["username"], config["password"])
-        self.institution = config["institution"]
 
     def url(self, obj, key=None):
         url_str = "%s/api/v1/%s/" % (self.base, obj)
@@ -74,10 +74,10 @@ class MyTardis(object):
         else:
             raise Exception("HTTP error: %i\n\n%s" % (response.status_code, response.text))
 
-    def create_experiment(self, title, description):
+    def create_experiment(self, title, description, institution):
         metadata = {
             "description": description,
-            "institution_name": self.institution,
+            "institution_name": institution,
             "title": title
         }
 
@@ -161,7 +161,7 @@ def sync_data(directory, hcp):
 
 
 def upload_metadata(args, objects, mytardis):
-    experiment = mytardis.create_experiment(args.title, args.description)
+    experiment = mytardis.create_experiment(args.title, args.description, args.institution)
     print "New experiment:", args.title
     for subdir in glob.iglob("%s/*" % args.dir):
         if os.path.isdir(subdir):
