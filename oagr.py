@@ -4,8 +4,8 @@
 
 """A basic tool for interacting with MyTardis + Hitachi Content Platform (which pretends to be S3)."""
 
-import base64, glob, hashlib, json, os, shutil
-import requests, xlrd
+import base64, datetime, glob, hashlib, json, os, shutil
+import boto, pytz, requests, xlrd
 
 from xlrd import open_workbook
 
@@ -42,7 +42,7 @@ class MyTardis(object):
         else:
             raise Exception("HTTP error: %i\n\n%s" % (response.status_code, response.text))
 
-    def fetch(self, obj, key):
+    def fetch(self, obj, key=None):
         response = requests.get(self.url(obj, key), headers=self.headers, auth=self.auth)
         if response.status_code == 200:
             return response.json()
@@ -223,6 +223,8 @@ class MyTardis(object):
                         print "Skipping existing metadata: %s/%s" % (sheet_name, item["id"])
 
 class HCP(object):
+    epoch = datetime.datetime(1970, 1, 1, tzinfo=pytz.utc)
+
     def __init__(self, config):
         self.base = config["base"]
 
@@ -253,6 +255,15 @@ class HCP(object):
                             if not self.exists(obj):
                                 self.upload(datafile)
         print "done."
+        return objects
+
+    def list(self):
+        objects = []
+        for key in self.bucket:
+            if key.size > 0:
+                timestamp = pytz.utc.localize(boto.utils.parse_ts(key.last_modified))
+                mtime = int((timestamp - self.epoch).total_seconds())
+                objects.append({ "name" : key.name, "size" : key.size, "mtime" : mtime })
         return objects
 
     @staticmethod
