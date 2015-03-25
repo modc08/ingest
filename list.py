@@ -4,7 +4,7 @@
 
 """Garbage collection for the ACAD object store namespace."""
 
-import argparse, datetime, time
+import argparse, datetime
 
 import tzlocal, yaml
 
