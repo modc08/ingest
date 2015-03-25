@@ -4,7 +4,7 @@
 
 """A basic tool for interacting with MyTardis + Hitachi Content Platform (which pretends to be S3)."""
 
-import base64, datetime, glob, hashlib, json, os, shutil
+import base64, datetime, glob, hashlib, json, os
 import boto, pytz, requests, xlrd
 
 from xlrd import open_workbook
