@@ -7,10 +7,6 @@
 import argparse, shutil, sys
 import yaml
 
-from xlrd import open_workbook
-
-from boto.s3.connection import S3Connection
-
 from oagr import MyTardis, HCP
 
 parser = argparse.ArgumentParser(
