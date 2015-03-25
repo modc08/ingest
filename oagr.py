@@ -245,6 +245,8 @@ class HCP(object):
     def sync(self, directory):
         print "Synchronising with the object store...",
         objects = {}
+        if not os.path.isdir(directory):
+            raise ValueError("not a directory: %s" % directory)
         for subdir in glob.iglob("%s/*" % directory):
             if os.path.isdir(subdir):
                 for datafile in glob.iglob("%s/*" % subdir):
