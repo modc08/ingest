@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# pylint: disable=line-too-long
+# pylint: disable=line-too-long,star-args
 
 """A basic tool for interacting with MyTardis + Hitachi Content Platform (which pretends to be S3)."""
 
@@ -16,6 +16,7 @@ parser.add_argument("-D", "--directory", help="Directory", required=True)
 parser.add_argument("-t", "--title", help="Title", required=True)
 parser.add_argument("-a", "--authors", help="Authors (semi-colon separated, format \"Last, First\")", required=True)
 parser.add_argument("-d", "--description", help="Description", required=True)
+parser.add_argument("-i", "--institution", help="Institution(s) (optional; can be semicolon separated)")
 parser.add_argument("-f", "--force", help="Force overwrite of existing metadata", action="store_true")
 parser.add_argument("-r", "--remove", help="Remove experiment directory after successful upload", action="store_true")
 
@@ -32,7 +33,7 @@ def main():
     mytardis = MyTardis(config["mytardis"])
     hcp = HCP(config["hcp"])
 
-    experiment = mytardis.upload_metadata(objects=hcp.sync(args.directory), **vars(args))
+    mytardis.upload_metadata(objects=hcp.sync(args.directory), **vars(args))
 
     if args.remove:
         print "Removing:", args.directory

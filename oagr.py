@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# pylint: disable=line-too-long
+# pylint: disable=line-too-long,unused-argument
 
 """A basic tool for interacting with MyTardis + Hitachi Content Platform (which pretends to be S3)."""
 
@@ -22,7 +22,6 @@ class MyTardis(object):
     def __init__(self, config):
         self.base = config["base"]
         self.auth = (config["username"], config["password"])
-        self.institution = config["institution"]
 
     def url(self, obj, key=None):
         url_str = "%s/api/v1/%s/" % (self.base, obj)
@@ -66,12 +65,14 @@ class MyTardis(object):
         else:
             raise Exception("HTTP error: %i\n\n%s" % (response.status_code, response.text))
 
-    def create_experiment(self, title, description, institution):
+    def create_experiment(self, title, description, institution=None):
         metadata = {
             "description": description,
-            "institution_name": institution,
             "title": title
         }
+
+        if institution:
+            metadata["institution_name"] = institution
 
         return self.location(self.create("experiment", metadata))
 
@@ -117,8 +118,8 @@ class MyTardis(object):
             self.create_author(experiment, author, order)
             order += 1
 
-    def upload_metadata(self, objects, directory, title, description, authors, force, **kwargs):
-        experiment = self.create_experiment(title, description, self.institution)
+    def upload_metadata(self, objects, directory, title, description, authors, institution=None, force=False, **kwargs):
+        experiment = self.create_experiment(title, description, institution)
         print "New experiment:", title
         for subdir in glob.iglob("%s/*" % directory):
             if os.path.isdir(subdir):
