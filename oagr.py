@@ -235,12 +235,22 @@ class HCP(object):
         hs3 = S3Connection(aws_access_key_id=access, aws_secret_access_key=secret, host=config["host"])
         self.bucket = hs3.get_bucket(config["bucket"])
 
-    def exists(self, obj):
-        return self.bucket.get_key(self.base + obj) is not None
+    def exists(self, obj, add_prefix=True):
+        if add_prefix:
+            return self.bucket.get_key(self.base + obj) is not None
+        else:
+            return self.bucket.get_key(obj) is not None
 
-    def upload(self, filename):
-        key = self.bucket.new_key(self.base + self.md5file(filename))
-        key.set_contents_from_filename(filename)
+    def upload(self, filename, key=None):
+        if key:
+            key = self.bucket.new_key(key)
+        else:
+            key = self.bucket.new_key(self.base + self.md5file(filename))
+        if not self.exists(key, False):
+            key.set_contents_from_filename(filename)
+            return True
+        else:
+            return False
 
     def sync(self, directory):
         print "Synchronising with the object store...",
@@ -268,6 +278,9 @@ class HCP(object):
                 mtime = int((timestamp - self.epoch).total_seconds())
                 objects.append({ "name" : key.name, "size" : key.size, "mtime" : mtime })
         return objects
+
+    def delete(self, key):
+        self.bucket.delete_key(key)
 
     @staticmethod
     def md5file(filename):
