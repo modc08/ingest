@@ -41,21 +41,28 @@ def main():
     print "done."
 
     if len(links) == 0:
-        print "MyTardis has no object store references; exiting."
+        print "MyTardis has no object store references."
+        print "For safety reasons I won't wipe the entire object store; exiting."
         return
 
     # Objects - MyTardis => Probably Garbage
     # Yes, we completely ignore concurrency -- but for this use case, not a problem.
 
-    delta = sorted(objects - links)
+    unreferenced = sorted(objects - links)
+    live = links & objects
+    dead = links - objects
 
-    if len(delta) == 0:
+    if len(unreferenced) == 0:
         print "Nothing to clean up; exiting."
         return
 
-    print "MyTardis references %i objects, but the store contains %i objects, so we'll delete %i." % (len(links), len(objects), len(delta))
+    print "MyTardis references %i objects. The store contains %i objects." % (len(links), len(objects))
+    print "Live references: %i" % len(live)
+    print "Dead references (should be zero!): %i" % len(dead)
+    print "Unreferenced objects: %i" % len(unreferenced)
+    print ""
 
-    for garbage in delta:
+    for garbage in unreferenced:
         lastmod = datetime.datetime.fromtimestamp(object_details[garbage]["mtime"], local).strftime("%c")
         print "Deleting %s [%s] ..." % (garbage, lastmod),
         if args.yes_really:
