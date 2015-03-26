@@ -4,7 +4,7 @@
 
 """A basic tool for interacting with MyTardis + Hitachi Content Platform (which pretends to be S3)."""
 
-import base64, datetime, glob, hashlib, json, os
+import base64, datetime, glob, hashlib, json, os, sys
 import boto, pytz, requests, xlrd
 
 from xlrd import open_workbook
@@ -254,6 +254,7 @@ class HCP(object):
 
     def sync(self, directory):
         print "Synchronising with the object store...",
+        sys.stdout.flush()
         objects = {}
         if not os.path.isdir(directory):
             raise ValueError("not a directory: %s" % directory)
