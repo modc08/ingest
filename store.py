@@ -13,6 +13,7 @@ parser = argparse.ArgumentParser(
     description="Upload and register an experiment.",
     epilog="Remember to populate config.yaml with appropriate settings.")
 parser.add_argument("-D", "--directory", help="Directory", required=True)
+parser.add_argument("-c", "--config", help="Config file path (optional)")
 parser.add_argument("-t", "--title", help="Title", required=True)
 parser.add_argument("-a", "--authors", help="Authors (semi-colon separated, format \"Last, First\")", required=True)
 parser.add_argument("-d", "--description", help="Description", required=True)
@@ -28,7 +29,12 @@ def main():
         print "Error: please use the name of the experiment directory rather than \"%s\"." % args.directory
         sys.exit(1)
 
-    config = yaml.load(open("config.yaml", "r"))
+    if args.config:
+        config_file = args.config
+    else:
+        config_file = "config.yaml"
+
+    config = yaml.load(open(config_file, "r"))
 
     mytardis = MyTardis(config["mytardis"])
     hcp = HCP(config["hcp"])
