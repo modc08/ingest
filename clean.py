@@ -29,7 +29,7 @@ def main():
 
     print "Listing objects...",
     object_details = {}
-    for o in hcp.list():
+    for o in hcp.list(config["hcp"]["base"]):
         object_details[o["name"]] = o
     objects = set(object_details.keys())
     print "done."
