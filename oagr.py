@@ -271,13 +271,13 @@ class HCP(object):
         print "done."
         return objects
 
-    def list(self):
+    def list(self, prefix=""):
         objects = []
-        for key in self.bucket:
+        for key in self.bucket.list(prefix):
             if key.size > 0:
                 timestamp = pytz.utc.localize(boto.utils.parse_ts(key.last_modified))
                 mtime = int((timestamp - self.epoch).total_seconds())
-                objects.append({ "name" : key.name, "size" : key.size, "mtime" : mtime })
+                objects.append({"name" : key.name, "size" : key.size, "mtime" : mtime})
         return objects
 
     def delete(self, key):
