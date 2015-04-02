@@ -4,8 +4,16 @@
 
 """A basic tool for managing backups on Hitachi Content Platform (which pretends to be S3)."""
 import argparse, glob, sys, os
+import logging
 
 from oagr import HCP
+
+logging.basicConfig(filename='database_backups.log', \
+    format='[%(asctime)s] %(levelname)-7s %(message)s', \
+    datefmt='%d/%b/%Y %H:%M:%S')
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 CONFIG_BACKUP_KEY = "db_backup"
 
@@ -21,10 +29,10 @@ class Backups(HCP):
         try:
             k = self.bucket.lookup(l["name"])
             k.get_contents_to_filename("%s/db_backup_%s.gz" % (to_dir, l["mtime"]))
-            print "Downloaded and saved %s/db_backup_%s.gz" % (to_dir, l["mtime"])
+            logger.info("Downloaded and saved %s/db_backup_%s.gz" % (to_dir, l["mtime"]))
         except Exception as e:
-            print "Failed to download %s" % l["name"]
-            print e
+            logger.error("Failed to download %s" % l["name"])
+            logger.error(e)
 
 # check backup folder and upload them if the have not in the store
 def upload_backup(config, remove=False):
@@ -33,16 +41,17 @@ def upload_backup(config, remove=False):
         directory = config["directory"]
     else:
         directory = '/tmp'
-    print "Check if there is any candidate in %s, has to be gz files" % directory
+    logger.debug("Check if there is any candidate in %s, has to be gz files" % directory)
     for datafile in glob.iglob("%s/*.gz" % directory):
-        print "Uploading %s..." % datafile
+        logger.debug("Uploading %s..." % datafile)
         if hcp.upload(datafile, None):
-            print "Uploaded: %s" % datafile
+            logger.info("Uploaded: %s" % datafile)
         else:
-            print "Already exists; skipping."
+            logger.debug("Already exists; skipping.")
         if remove:
-            print "%s removed" % datafile
+            logger.info("%s removed" % datafile)
             os.remove(datafile)
+    logger.info("Uploading of backups completely")
 
 # get the latest backup, save into a directory
 def retrieve_backup(config):
@@ -52,6 +61,7 @@ def retrieve_backup(config):
         directory = '/tmp'
     hcp = Backups(config)
     hcp.get_latest(directory)
+    logger.info("Retrieving the latest backup completely")
 
 parser = argparse.ArgumentParser(
     description="Back up whatever found in a folder.",
@@ -70,10 +80,11 @@ if __name__ == "__main__":
 
     import yaml
     config = yaml.load(open(config_file, "r"))[CONFIG_BACKUP_KEY]
+
     sys.stdout.flush()
     if args.action == "upload":
-        print "Backup"
+        logger.info("Run backup")
         upload_backup(config, args.remove)
     else:
-        print "Get the latest backup from %s of bucket %s in object store" % (config["base"], config["bucket"])
+        logger.info("Get the latest backup from %s of bucket %s in object store" % (config["base"], config["bucket"]))
         retrieve_backup(config)
