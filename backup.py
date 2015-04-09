@@ -22,6 +22,21 @@ class Backups(HCP):
     def __init__(self, config):
         super(Backups, self).__init__(config)
 
+    def get_version(self, to_dir, backupname):
+    # run list.py and find the file name of a backup,
+    # use the name without base as backupname for retrieving
+        if self.exists(backupname, True):
+            self.__retrive__({'name': self.base + backupname}, to_dir)
+            try:
+                k = self.bucket.lookup(self.base + backupname)
+                k.get_contents_to_filename("%s/%s" % (to_dir, backupname))
+                logger.info("Downloaded and saved %s/%s" % (to_dir, backupname))
+            except Exception as e:
+                logger.error("Failed to download %s" % backupname)
+                logger.error(e)
+        else:
+            logger.info("Cannot find %s in store. Check name." % backupname)
+
     def get_latest(self, to_dir):
         objects = self.list(self.base)
         objects.sort(key=lambda item: item['mtime'], reverse=True)
@@ -43,17 +58,21 @@ class Backups(HCP):
                 return
         logger.info("No backup created within one day around %s" % q_date)
 
+    def mark_latest(self, key_name):
+        return self.bucket.copy_key(self.base + "latest", self.bucket.name, key_name) is not None
+
     def __retrive__(self, kd, to_dir):
         try:
             k = self.bucket.lookup(kd["name"])
-            k.get_contents_to_filename("%s/db_backup_%s.gz" % (to_dir, kd["mtime"]))
-            logger.info("Downloaded and saved %s/db_backup_%s.gz" % (to_dir, kd["mtime"]))
+            k.get_contents_to_filename("%s/retrieved_backup_%s.gz" % (to_dir, kd["mtime"]))
+            logger.info("Downloaded and saved %s/retrieved_backup_%s.gz" % (to_dir, kd["mtime"]))
         except Exception as e:
             logger.error("Failed to download %s" % kd["name"])
             logger.error(e)
 
 
 # check backup folder and upload them if the have not in the store
+# copy_key
 def upload_backup(config, remove=False):
     hcp = Backups(config)
     if 'directory' in config:
@@ -61,10 +80,19 @@ def upload_backup(config, remove=False):
     else:
         directory = '/tmp'
     logger.debug("Check if there is any candidate in %s, has to be gz files" % directory)
-    for datafile in glob.iglob("%s/*.gz" % directory):
+    # see db_bakup.sh for what name pattern is used in producing backups
+    latest_not_marked = True
+    base = hcp.base
+    for datafile in sorted(glob.iglob("%s/dbbackup_*.gz" % directory), key=os.path.getmtime, reverse=True):
+        kname = base + datafile.replace("dbbackup_", "")
         logger.debug("Uploading %s..." % datafile)
-        if hcp.upload(datafile, None):
-            logger.info("Uploaded: %s" % datafile)
+        if hcp.upload(datafile, kname):
+            logger.info("Uploaded: %s as %s" % (datafile, kname))
+            if latest_not_marked:
+                hcp.upload(datafile, hcp.base + "latest")
+                #~ if not hcp.mark_latest(kname):
+                    #~ logger.error("Could not mark %s as the latest" % kname)
+                latest_not_marked = False
         else:
             logger.debug("Already exists; skipping.")
         if remove:
@@ -73,16 +101,16 @@ def upload_backup(config, remove=False):
     logger.info("Uploading of backups completely")
 
 # get the latest backup, save into a directory
-def retrieve_backup(config, dated):
+def retrieve_backup(config, backupname):
     if 'directory' in config:
         directory = config["directory"]
     else:
         directory = '/tmp'
     hcp = Backups(config)
-    if dated:
-        hcp.get_dated(directory, dated)
-    else:
+    if backupname == 'latest':
         hcp.get_latest(directory)
+    else:
+        hcp.get_version(directory, backupname)
     logger.info("Retrieving backup completely")
 
 parser = argparse.ArgumentParser(
@@ -91,7 +119,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument("-c", "--config", help="Config file path (optional). Default is ./config.yaml")
 parser.add_argument("-a", "--action", help="Action to be taken: either backup or retrieve the latest backup. ", required=True, choices=['upload', 'retrieve'])
 parser.add_argument("-r", "--remove", help="Remove experiment directory after successful upload", action="store_true")
-parser.add_argument("-d", "--dated", help="Date when a backup was uploaded. Has to be in YYYYMMDD format")
+parser.add_argument("-n", "--backupname", help="Name of a backup. When not set, the latest backup is used. Otherwise, it has to be the exact name of a backup")
 
 if __name__ == "__main__":
     args = parser.parse_args()
@@ -110,4 +138,4 @@ if __name__ == "__main__":
         upload_backup(config, args.remove)
     else:
         logger.info("Get a backup from %s of bucket %s in object store" % (config["base"], config["bucket"]))
-        retrieve_backup(config, args.dated)
+        retrieve_backup(config, args.backupname)
