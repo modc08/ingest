@@ -26,9 +26,8 @@ class Backups(HCP):
     # run list.py and find the file name of a backup,
     # use the name without base as backupname for retrieving
         if self.exists(backupname, True):
-            self.__retrive__({'name': self.base + backupname}, to_dir)
             try:
-                k = self.bucket.lookup(self.base + backupname)
+                k = self.bucket.get_key(self.base + backupname)
                 k.get_contents_to_filename("%s/%s" % (to_dir, backupname))
                 logger.info("Downloaded and saved %s/%s" % (to_dir, backupname))
             except Exception as e:
@@ -58,7 +57,17 @@ class Backups(HCP):
                 return
         logger.info("No backup created within one day around %s" % q_date)
 
+    #~ def mark_latest(self, key_name):
+        #~ #return self.bucket.copy_key(self.base + "latest", self.bucket.name, key_name) is not None
+        #~ key = self.bucket.get_key(self.base + "latest")
+        #~ if key is None:
+            #~ key = self.bucket.new_key(self.base + "latest")
+        #~ return key.set_contents_from_filename(filename) > 0
+
     def mark_latest(self, key_name):
+        key = self.bucket.get_key(self.base + "latest")
+        if key:
+            self.bucket.delete_key(key)
         return self.bucket.copy_key(self.base + "latest", self.bucket.name, key_name) is not None
 
     def __retrive__(self, kd, to_dir):
@@ -84,15 +93,18 @@ def upload_backup(config, remove=False):
     latest_not_marked = True
     base = hcp.base
     for datafile in sorted(glob.iglob("%s/dbbackup_*.gz" % directory), key=os.path.getmtime, reverse=True):
-        kname = base + datafile.replace("dbbackup_", "")
+        kname = base + os.path.basename(datafile).replace("dbbackup_", "")
         logger.debug("Uploading %s..." % datafile)
         if hcp.upload(datafile, kname):
             logger.info("Uploaded: %s as %s" % (datafile, kname))
             if latest_not_marked:
-                hcp.upload(datafile, hcp.base + "latest")
-                #~ if not hcp.mark_latest(kname):
-                    #~ logger.error("Could not mark %s as the latest" % kname)
+                logger.info("marking latest")
+                #~ hcp.upload(datafile, hcp.base + "latest")
+                if not hcp.mark_latest(kname):
+                    logger.error("Could not mark %s as the latest" % kname)
                 latest_not_marked = False
+            else:
+                logger.info("do not mark, second?")
         else:
             logger.debug("Already exists; skipping.")
         if remove:
@@ -107,10 +119,7 @@ def retrieve_backup(config, backupname):
     else:
         directory = '/tmp'
     hcp = Backups(config)
-    if backupname == 'latest':
-        hcp.get_latest(directory)
-    else:
-        hcp.get_version(directory, backupname)
+    hcp.get_version(directory, backupname)
     logger.info("Retrieving backup completely")
 
 parser = argparse.ArgumentParser(
