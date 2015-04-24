@@ -253,7 +253,7 @@ class HCP(object):
             return False
 
     def sync(self, directory):
-        print "Synchronising with the object store...",
+        print "Synchronising with the object store..."
         sys.stdout.flush()
         objects = {}
         if not os.path.isdir(directory):
@@ -267,8 +267,8 @@ class HCP(object):
                             obj = self.md5file(datafile)
                             objects[datafile] = obj
                             if not self.exists(obj):
+                                print "Uploading %s" % datafile
                                 self.upload(datafile)
-        print "done."
         return objects
 
     def list(self):
