@@ -22,6 +22,7 @@ class MyTardis(object):
     def __init__(self, config):
         self.base = config["base"]
         self.auth = (config["username"], config["password"])
+        self.verify = "//www." in self.base
 
     def url(self, obj, key=None):
         url_str = "%s/api/v1/%s/" % (self.base, obj)
@@ -35,21 +36,21 @@ class MyTardis(object):
         return "/api/v1/%s/%s/" % (obj, key)
 
     def create(self, obj, data):
-        response = requests.post(self.url(obj), headers=self.headers, auth=self.auth, data=json.dumps(data))
+        response = requests.post(self.url(obj), headers=self.headers, auth=self.auth, data=json.dumps(data), verify=self.verify)
         if response.status_code == 201:
             return response
         else:
             raise Exception("HTTP error: %i\n\n%s" % (response.status_code, response.text))
 
     def fetch(self, obj, key=None):
-        response = requests.get(self.url(obj, key), headers=self.headers, auth=self.auth)
+        response = requests.get(self.url(obj, key), headers=self.headers, auth=self.auth, verify=self.verify)
         if response.status_code == 200:
             return response.json()
         else:
             raise Exception("HTTP error: %i\n\n%s" % (response.status_code, response.text))
 
     def exists(self, obj, key):
-        response = requests.get(self.url(obj, key), headers=self.headers, auth=self.auth)
+        response = requests.get(self.url(obj, key), headers=self.headers, auth=self.auth, verify=self.verify)
         if response.status_code == 200:
             return True
         elif response.status_code == 404:
