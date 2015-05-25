@@ -14,6 +14,7 @@ parser = argparse.ArgumentParser(
     description="Garbage collection for the ACAD object store namespace. Note: default mode is to do a dry run.",
     epilog="Remember to populate config.yaml with appropriate settings.")
 parser.add_argument("-y", "--yes-really", help="Yes, delete objects. Really.", action="store_true")
+parser.add_argument("-f", "--force", help="Force mass deletion.", action="store_true")
 
 local = tzlocal.get_localzone()
 
@@ -40,7 +41,7 @@ def main():
     links = set([f["md5sum"] for f in mytardis.fetch("dataset_file").get("objects", [])])
     print "done."
 
-    if len(links) == 0:
+    if len(links) == 0 and not args.force:
         print "MyTardis has no object store references."
         print "For safety reasons I won't wipe the entire object store; exiting."
         return
