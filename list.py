@@ -14,14 +14,16 @@ from oagr import HCP
 
 parser = argparse.ArgumentParser(
     description="List the ACAD object store namespace.",
-    epilog="Remember to populate config.yaml with appropriate settings.")
+    epilog="Remember to populate your YAML configuration with appropriate settings.")
+
+parser.add_argument("-c", "--config", help="Config file (YAML)", default="config.yaml")
 
 local = tzlocal.get_localzone()
 
 def main():
-    parser.parse_args()
+    args = parser.parse_args()
 
-    config = yaml.load(open("config.yaml", "r"))
+    config = yaml.load(open(args.config, "r"))
 
     hcp = HCP(config["hcp"])
 
