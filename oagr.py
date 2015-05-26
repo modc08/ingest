@@ -23,6 +23,8 @@ class MyTardis(object):
         self.base = config["base"]
         self.auth = (config["username"], config["password"])
         self.verify = "//www." in self.base
+        if not self.verify:
+            requests.packages.urllib3.disable_warnings()
 
     def url(self, obj, key=None):
         url_str = "%s/api/v1/%s/" % (self.base, obj)
