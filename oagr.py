@@ -179,7 +179,7 @@ class MyTardis(object):
                     else:
                         item[fields[col]] = val
                 else:
-                    item[fields[col]] = sheet.cell_value(row, col)
+                    item[fields[col]] = sheet.cell_value(row, col).strip()
             data.append(item)
         return data
 
