@@ -4,7 +4,7 @@
 
 """A basic tool for interacting with MyTardis + Hitachi Content Platform (which pretends to be S3)."""
 
-import base64, datetime, glob, hashlib, json, os, sys
+import base64, datetime, glob, hashlib, json, os, os.path, sys
 import boto, pytz, requests, xlrd
 
 from xlrd import open_workbook
@@ -263,8 +263,8 @@ class HCP(object):
             raise ValueError("not a directory: %s" % directory)
         for subdir in glob.iglob("%s/*" % directory):
             if os.path.isdir(subdir):
-                for datafile in glob.iglob("%s/*" % subdir):
-                    if os.path.isfile(datafile):
+                for dirpath, dirnames, filenames in os.walk(subdir):
+                    for datafile in [os.path.join(dirpath, filename) for filename in filenames]:
                         basename = datafile.split("/")[-1]
                         if basename not in spreadsheet_filenames:
                             obj = self.md5file(datafile)
