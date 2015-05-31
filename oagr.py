@@ -245,13 +245,18 @@ class HCP(object):
         else:
             return self.bucket.get_key(obj) is not None
 
+    def upload_progress(so_far, total):
+        percentage = int((float(so_far) / float(total)) * 100)
+        sys.stdout.write(str(percentage) + "% ")
+        sys.stdout.flush()
+
     def upload(self, filename, key=None):
         if key:
             key = self.bucket.new_key(key)
         else:
             key = self.bucket.new_key(self.base + self.md5file(filename))
         if not self.exists(key, False):
-            key.set_contents_from_filename(filename)
+            key.set_contents_from_filename(filename, cb=upload_progress, num_cb=10)
             return True
         else:
             return False
@@ -273,6 +278,7 @@ class HCP(object):
                             if not self.exists(obj):
                                 print "Uploading %s" % datafile
                                 self.upload(datafile)
+                                print "done"
         return objects
 
     def list(self):
