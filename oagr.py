@@ -129,22 +129,23 @@ class MyTardis(object):
                 dataset_name = subdir.split("/")[-1]
                 dataset = self.create_dataset(experiment, dataset_name)
                 print "New dataset:", dataset_name
-                for datafile in [f for f in glob.glob("%s/*" % subdir) if os.path.isfile(f)]:
-                    datafilename = datafile.split("/")[-1]
-                    if datafilename in spreadsheet_filenames:
-                        print "Processing:", datafile
-                        sheets = {}
-                        for sheet in open_workbook(file_contents=open(datafile, "rb").read()).sheets():
-                            for name in sheet.name.lower().split():
-                                if name in self.valid_sheets:
-                                    sheets[name] = sheet
-                                    break
-                        self.process_metadata(sheets, dataset, force)
-                    else:
-                        self.create_file(
-                            dataset, datafilename, os.stat(datafile).st_size,
-                            objects[datafile], "application/octet-stream")
-                        print "New datafile:", datafilename
+                for dirpath, dirnames, filenames in os.walk(subdir):
+                    for datafile in [os.path.join(dirpath, filename) for filename in filenames]:
+                        datafilename = datafile.split("/")[-1]
+                        if datafilename in spreadsheet_filenames:
+                            print "Processing:", datafile
+                            sheets = {}
+                            for sheet in open_workbook(file_contents=open(datafile, "rb").read()).sheets():
+                                for name in sheet.name.lower().split():
+                                    if name in self.valid_sheets:
+                                        sheets[name] = sheet
+                                        break
+                            self.process_metadata(sheets, dataset, force)
+                        else:
+                            self.create_file(
+                                dataset, datafilename, os.stat(datafile).st_size,
+                                objects[datafile], "application/octet-stream")
+                            print "New datafile:", datafilename
         self.upload_authors(experiment, authors)
         return experiment
 
