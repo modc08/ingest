@@ -6,6 +6,7 @@
 
 import base64, datetime, glob, hashlib, json, os, sys
 import boto, pytz, requests, xlrd
+import ssl
 
 from xlrd import open_workbook
 
@@ -235,8 +236,10 @@ class HCP(object):
 
         access = base64.b64encode(config["access"])
         secret = hashlib.md5(config["secret"]).hexdigest()
+        _create_unverified_https_context = ssl._create_unverified_context
+        ssl._create_default_https_context = _create_unverified_https_context
 
-        hs3 = S3Connection(aws_access_key_id=access, aws_secret_access_key=secret, host=config["host"])
+        hs3 = S3Connection(aws_access_key_id=access, aws_secret_access_key=secret, host=config["host"], validate_certs=False)
         self.bucket = hs3.get_bucket(config["bucket"])
 
     def exists(self, obj, add_prefix=True):
