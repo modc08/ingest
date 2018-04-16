@@ -234,8 +234,8 @@ class HCP(object):
     def __init__(self, config):
         self.base = config["base"]
 
-        access = base64.b64encode(config["access"])
-        secret = hashlib.md5(config["secret"]).hexdigest()
+        access = config["access"]
+        secret = config["secret"]
         _create_unverified_https_context = ssl._create_unverified_context
         ssl._create_default_https_context = _create_unverified_https_context
 
