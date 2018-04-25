@@ -5,8 +5,10 @@
 """A basic tool for interacting with MyTardis + Hitachi Content Platform (which pretends to be S3)."""
 
 import base64, datetime, glob, hashlib, json, os, sys
-import boto, pytz, requests, xlrd
+import pytz, requests, xlrd
 import ssl
+import boto3, botocore
+import threading
 
 from xlrd import open_workbook
 
@@ -228,6 +230,24 @@ class MyTardis(object):
                     else:
                         print "Skipping existing metadata: %s/%s" % (sheet_name, item["id"])
 
+class ProgressPercentage(object):
+    def __init__(self, filename):
+        self._filename = filename
+        self._size = float(os.path.getsize(filename))
+        self._seen_so_far = 0
+        self._lock = threading.Lock()
+    def __call__(self, bytes_amount):
+        # To simplify we'll assume this is hooked up
+        # to a single filename.
+        with self._lock:
+            self._seen_so_far += bytes_amount
+            percentage = (self._seen_so_far / self._size) * 100
+            sys.stdout.write(
+                "\r%s  %s / %s  (%.2f%%)" % (
+                    self._filename, self._seen_so_far, self._size,
+                    percentage))
+            sys.stdout.flush()
+
 class HCP(object):
     epoch = datetime.datetime(1970, 1, 1, tzinfo=pytz.utc)
 
@@ -239,26 +259,20 @@ class HCP(object):
         _create_unverified_https_context = ssl._create_unverified_context
         ssl._create_default_https_context = _create_unverified_https_context
 
-        hs3 = S3Connection(aws_access_key_id=access, aws_secret_access_key=secret, host=config["host"], validate_certs=False)
-        self.bucket = hs3.get_bucket(config["bucket"])
+        session = boto3.Session(aws_access_key_id=access, aws_secret_access_key=secret)
+        self.bucket = session.resource('s3').Bucket(config["bucket"])
 
     def exists(self, obj, add_prefix=True):
         if add_prefix:
-            return self.bucket.get_key(self.base + obj) is not None
-        else:
-            return self.bucket.get_key(obj) is not None
-
-    def upload_progress(self, so_far, total):
-        sys.stdout.write(".")
-        sys.stdout.flush()
+            obj = self.base + obj
+        objects = self.bucket.objects.filter(Prefix=obj)
+        return len(list(objects)) > 0
 
     def upload(self, filename, key=None):
-        if key:
-            key = self.bucket.new_key(key)
-        else:
-            key = self.bucket.new_key(self.base + self.md5file(filename))
+        if key is None:
+            key = self.base + self.md5file(filename)
         if not self.exists(key, False):
-            key.set_contents_from_filename(filename, cb=self.upload_progress, num_cb=10)
+            self.bucket.upload_file(filename, key, Callback=ProgressPercentage(filename))
             return True
         else:
             return False
@@ -285,15 +299,14 @@ class HCP(object):
 
     def list(self):
         objects = []
-        for key in self.bucket:
+        for key in self.bucket.objects.all():
             if key.size > 0:
-                timestamp = pytz.utc.localize(boto.utils.parse_ts(key.last_modified))
-                mtime = int((timestamp - self.epoch).total_seconds())
-                objects.append({ "name" : key.name, "size" : key.size, "mtime" : mtime })
+                mtime = int((key.last_modified - self.epoch).total_seconds())
+                objects.append({ "name" : key.key, "size" : key.size, "mtime" : mtime })
         return objects
 
     def delete(self, key):
-        self.bucket.delete_key(key)
+        self.bucket.delete_objects(Delete={'Objects': [ { 'Key': key } ]})
 
     @staticmethod
     def md5file(filename):

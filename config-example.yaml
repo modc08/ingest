@@ -1,11 +1,11 @@
 mytardis:
-    base: http://foo.bar
+    base: https://foo.bar
     username: username
     password: password
 
 hcp:
-    host: hcp.acme.com
-    base: some/path/prefix/
-    access: access key
-    secret: secret key
-    bucket: some-bucket-name
+    host: s3.some-region.amazonaws.com
+    base: ""
+    access: some-access-key-from-amazon-iam
+    secret: some-secret-key-from-amazon-iam
+    bucket: some-bucket-name-from-amazon-s3
